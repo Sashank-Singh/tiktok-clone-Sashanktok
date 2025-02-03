@@ -5,11 +5,13 @@ import { motion } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 
 function Upload() {
-  const { addVideo } = useContext(VideoContext)!;
+  // Assume that currentUser is provided by your VideoContext.
+  // Replace with your actual user context if needed.
+  const { addVideo, currentUser } = useContext(VideoContext)!;
   const navigate = useNavigate();
+
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
   const [description, setDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -46,10 +48,12 @@ function Upload() {
   };
 
   const completeUpload = () => {
-    if (!videoFile || !username) {
-      alert('Please provide a video file and a username.');
+    if (!videoFile) {
+      alert('Please provide a video file.');
       return;
     }
+    // Use the current user's username directly.
+    const username = currentUser;
     const videoUrl = URL.createObjectURL(videoFile);
     const newVideo = {
       id: Date.now().toString(),
@@ -129,18 +133,7 @@ function Upload() {
           </div>
 
           <div className="space-y-4">
-            <div className="relative">
-              <input 
-                type="text" 
-                placeholder="Username" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-4 rounded-2xl bg-gray-700 text-white placeholder-gray-400 border-2 border-gray-600 focus:border-pink-500 focus:outline-none transition-all duration-300"
-                required
-              />
-              <i className="fas fa-user absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            </div>
-
+            {/* Removed username input since currentUser is used automatically */}
             <div className="relative">
               <textarea 
                 placeholder="Video Description (optional)" 

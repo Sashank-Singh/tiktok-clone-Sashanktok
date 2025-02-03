@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VideoContext, Video } from '../context/VideoContext';
@@ -23,17 +23,14 @@ function VideoCard({ video }: VideoCardProps) {
   const [newComment, setNewComment] = useState('');
   const [likeCount, setLikeCount] = useState(parseInt(video.likes) || 0);
   const [isLiked, setIsLiked] = useState(false);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { ref, inView } = useInView({
-    threshold: 0.7,
-  });
+  const { ref, inView } = useInView({ threshold: 0.7 });
 
   const togglePlay = () => {
     if (!videoRef.current) return;
-    
     if (videoRef.current.paused) {
-      videoRef.current.play();
+      videoRef.current.play().catch(() => {}); // Handle playback error
       setIsPlaying(true);
     } else {
       videoRef.current.pause();
@@ -42,34 +39,29 @@ function VideoCard({ video }: VideoCardProps) {
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-    toggleLike(video.id, '@currentUser'); // In a real app, use actual user ID
+    setIsLiked((prev) => !prev);
+    setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
+    toggleLike(video.id, '@currentUser'); // Replace with actual user ID in production
   };
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-
     const comment: Comment = {
       id: Date.now().toString(),
-      username: '@currentUser', // In a real app, use actual user
+      username: '@currentUser', // Replace with real data
       text: newComment,
       timestamp: 'Just now',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=currentUser`
     };
-
     addComment(video.id, comment);
     setNewComment('');
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!videoRef.current) return;
-
     if (inView) {
-      videoRef.current.play().catch(() => {
-        // Handle autoplay failure
-      });
+      videoRef.current.play().catch(() => {});
       setIsPlaying(true);
     } else {
       videoRef.current.pause();
@@ -82,13 +74,13 @@ function VideoCard({ video }: VideoCardProps) {
       <video
         ref={videoRef}
         src={video.videoUrl}
-        className={`absolute inset-0 w-full h-full ${fixedAspect ? "object-contain" : "object-cover"}`}
+        className={`absolute inset-0 w-full h-full ${fixedAspect ? 'object-contain' : 'object-cover'}`}
         loop
         playsInline
         muted={false}
         onClick={togglePlay}
       />
-      
+
       {/* Play/Pause Indicator */}
       <AnimatePresence>
         {!isPlaying && (
@@ -106,14 +98,14 @@ function VideoCard({ video }: VideoCardProps) {
       </AnimatePresence>
 
       {/* Video Info Overlay */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="absolute bottom-0 left-0 p-4 z-10 w-full bg-gradient-to-t from-black/60 to-transparent"
       >
         <div className="flex items-center space-x-3 mb-4">
-          <img 
-            src={video.avatar} 
+          <img
+            src={video.avatar}
             alt={video.username}
             className="w-12 h-12 rounded-full border-2 border-white"
           />
@@ -142,10 +134,7 @@ function VideoCard({ video }: VideoCardProps) {
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-white text-lg font-bold">Comments</h3>
-              <button 
-                onClick={() => setShowComments(false)}
-                className="text-white hover:text-pink-500"
-              >
+              <button onClick={() => setShowComments(false)} className="text-white hover:text-pink-500">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -183,12 +172,8 @@ function VideoCard({ video }: VideoCardProps) {
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-semibold text-sm">
-                        {comment.username}
-                      </span>
-                      <span className="text-gray-400 text-xs">
-                        {comment.timestamp}
-                      </span>
+                      <span className="text-white font-semibold text-sm">{comment.username}</span>
+                      <span className="text-gray-400 text-xs">{comment.timestamp}</span>
                     </div>
                     <p className="text-white text-sm">{comment.text}</p>
                   </div>
@@ -253,14 +238,30 @@ function VideoCard({ video }: VideoCardProps) {
 }
 
 function Feed() {
-  const { videos } = useContext(VideoContext)!;
+  const { videos, fetchMoreVideos, hasMore, loading } = useContext(VideoContext)!;
+  const { ref: loadMoreRef, inView: loadMoreInView } = useInView({
+    threshold: 0.5,
+  });
+
+  useEffect(() => {
+    if (loadMoreInView && hasMore && !loading) {
+      fetchMoreVideos();
+    }
+  }, [loadMoreInView, hasMore, loading, fetchMoreVideos]);
 
   return (
-    <div className="relative">
+    <div className="relative h-screen">
       <div className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide">
         {videos.map((video) => (
           <VideoCard key={video.id} video={video} />
         ))}
+
+        {/* Infinite Scroll Sentinel */}
+        {hasMore && (
+          <div ref={loadMoreRef} className="w-full h-20 flex items-center justify-center">
+            <span className="text-white">Loading more videos...</span>
+          </div>
+        )}
       </div>
     </div>
   );
